@@ -100,7 +100,7 @@ class Renamer(object):
 			else:
 				candy = item['inventory_item_data']['candy']
 				pokedex_number = candy['family_id']
-				self.candy[pokedex_number] = candy['candy']
+				self.candy[pokedex_number] = candy.get('candy', 0)
 
 		for item in inventory_items:
 			try:
