@@ -1,3 +1,6 @@
--e git+https://github.com/keyphact/pgoapi.git@691aff2543c39ba929e4aa0e325dc43d24cb24df#egg=pgoapi
+-e git+https://github.com/pogodevorg/pgoapi.git@cf158ee4b0d927e45941979c895daff1db36a089#egg=pgoapi
 terminaltables ~= 3.0.0
 pogotransfercalc ~= 1.0.1
+pogocpm2level ~= 1.0.0
+pogopowerupcost ~= 1.0.0
+requests==2.10.0
