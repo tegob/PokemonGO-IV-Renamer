@@ -4,9 +4,13 @@
 import argparse
 import json
 import pogotransfercalc
+import random
+import re
+import requests
 import time
 from itertools import groupby
 from pgoapi import PGoApi
+from pgoapi import utilities as util
 from random import uniform
 from terminaltables import SingleTable
 
@@ -26,14 +30,13 @@ class Renamer(object):
 		parser.add_argument('-a', '--auth-service')
 		parser.add_argument('-u', '--username')
 		parser.add_argument('-p', '--password')
+		parser.add_argument('--hash-key', required=True)
 		parser.add_argument('--clear', action='store_true', default=False)
 		parser.add_argument('--rename', action='store_true', default=False)
 		parser.add_argument('--format', default='%percent% %atk %def %sta')
 		parser.add_argument('--transfer', action='store_true', default=False)
 		parser.add_argument('--locale', default='en')
-		parser.add_argument('--latitude', required=True, type=float)
-		parser.add_argument('--longitude', required=True, type=float)
-		parser.add_argument('--altitude', type=float, default=4)
+		parser.add_argument('--location', required=True)
 		parser.add_argument('--min-delay', type=int, default=10)
 		parser.add_argument('--max-delay', type=int, default=20)
 		parser.add_argument('--iv', type=int, default=75)
@@ -61,16 +64,41 @@ class Renamer(object):
 		elif self.config.transfer:
 			self.transfer_pokemon()
 
+	def get_elevation_for_position(self):
+		try:
+			url = 'https://maps.googleapis.com/maps/api/elevation/json?locations={},{}'.format(
+				str(self.position[0]), str(self.position[1]))
+			altitude = requests.get(url).json()[u'results'][0][u'elevation'] + random.uniform(0.9, 1.7)
+			print "Local altitude is: {0}m".format(altitude)
+			self.position = (self.position[0], self.position[1], altitude)
+		except requests.exceptions.RequestException:
+			print "Unable to retrieve altitude from Google APIs; setting to 0"
+
+	def get_location(self):
+		# use lat/lng directly if matches such a pattern
+		prog = re.compile("^(\-?\d+\.\d+),?\s?(\-?\d+\.\d+)$")
+		res = prog.match(self.config.location)
+		if res:
+			print "Using coordinates from CLI directly..."
+			self.position = (float(res.group(1)), float(res.group(2)), 0)
+		else:
+			print "Looking up coordinates using API..."
+			self.position = util.get_pos_by_name(self.config.location)
+
+		self.get_elevation_for_position()
+
 	def setup_api(self):
 		self.api = PGoApi()
+		self.api.activate_hash_server(self.config.hash_key)
+		self.get_location()
 		print u'Signing in…'
 		if not self.api.login(
 			self.config.auth_service,
 			self.config.username,
 			self.config.password,
-			self.config.latitude,
-			self.config.longitude,
-			self.config.altitude
+			self.position[0], # latitude
+			self.position[1], # longitude
+			self.position[2]  # altitude
 			):
 			print 'Login error'
 			exit(0)
@@ -85,7 +113,7 @@ class Renamer(object):
 		response_dict = self.api.get_inventory()
 
 		self.pokemon = []
-		self.candy = { i: 0 for i in range(1, 151 + 1) }
+		self.candy = { i: 0 for i in range(1, 251 + 1) }
 		inventory_items = (response_dict
 			.get('responses', {})
 			.get('GET_INVENTORY', {})
