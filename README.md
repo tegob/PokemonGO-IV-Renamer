@@ -10,16 +10,16 @@ Using the default settings, a near-perfect Vaporeon gets renamed to `98% 15 15 1
 ### Requirements
 
 - Python 2
-- pip
-- git
+- `pip` for Python 2, i.e. `pip2`
+- Git
 
 ### Guide
 
 ```
-git clone -b master https://github.com/Boren/PokemonGO-IV-Renamer.git
+git clone -b master https://github.com/tegob/PokemonGO-IV-Renamer.git
 cd PokemonGO-IV-Renamer
-pip install -r requirements.txt (Might need to sudo)
-python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD
+pip2 install -r requirements.txt # might need to sudo
+python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD --location '221B Baker St, London'
 ```
 
 **Note:** If you use a Google account and have two-factor authentication enabled, you need to [generate an app password](https://security.google.com/settings/security/apppasswords) and use that to log in.
@@ -31,9 +31,7 @@ python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD
 | `-a`                 | Login service, `google` or `ptc`              | yes      |                                                 |
 | `-u`                 | Username                                      | yes      |                                                 |
 | `-p`                 | Password                                      | yes      |                                                 |
-| `--latitude`         | Latitude                                      | yes      |                                                 |
-| `--longitude`        | Longitude                                     | yes      |                                                 |
-| `--altitude`         | Altitude                                      | yes      |                                                 |
+| `--location`         | Latitude                                      | yes      |                                                 |
 | `--format`           | Custom nickname format, placeholders below    | optional | `--format "%percent% %name"` => `100% Vaporeon` |
 | `--rename`           | Rename the Pokémon (i.e. don’t just preview)  | optional |                                                 |
 | `--transfer`         | Transfer the optimal amount of weak IV Pokémon for each species, maximizing the amount of possible evolutions | optional |                                                 |
@@ -66,41 +64,6 @@ Example formats:
 | `--format '%percent% %atk %def %sta'` | `98% 15 15 14` |
 | `--format '#%id @ %percent%'`         | `#134 @ 98%`   |
 | `--format '%id %percent %atk %def'`   | `134 98 15 15` |
-
-## Installation with Docker
-
-### Requirements
-
-- Docker or Docker toolbox
-
-### Guide
-
-```sh
-docker pull monkeystorm/pogo-renamer
-docker run --name CONTAINERNAME -it pogo-renamer /bin/bash
-cd /home/PokemonGO-IV-Renamer/
-python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD
-```
-
-## Commands
-
-To leave the Docker container:
-```
-exit
-```
-
-Once the container has been started once you can reuse it by typing
-
-```sh
-docker start CONTAINERNAME
-```
-
-then
-
-```sh
-docker attach CONTAINERNAME
-python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD
-```
 
 ## Credits
 - [tejado](https://github.com/tejado) for the API
