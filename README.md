@@ -31,7 +31,7 @@ python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD --location '221B Baker S
 | `-a`                 | Login service, `google` or `ptc`              | yes      |                                                 |
 | `-u`                 | Username                                      | yes      |                                                 |
 | `-p`                 | Password                                      | yes      |                                                 |
-| `--location`         | Latitude                                      | yes      |                                                 |
+| `--location`         | Location (coords or address)                  | yes      |                                                 |
 | `--format`           | Custom nickname format, placeholders below    | optional | `--format "%percent% %name"` => `100% Vaporeon` |
 | `--rename`           | Rename the Pokémon (i.e. don’t just preview)  | optional |                                                 |
 | `--transfer`         | Transfer the optimal amount of weak IV Pokémon for each species, maximizing the amount of possible evolutions | optional |                                                 |
