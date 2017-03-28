@@ -19,10 +19,12 @@ Using the default settings, a near-perfect Vaporeon gets renamed to `98% 15 15 1
 git clone -b master https://github.com/tegob/PokemonGO-IV-Renamer.git
 cd PokemonGO-IV-Renamer
 pip2 install -r requirements.txt # might need to sudo
-python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD --location '221B Baker St, London'
+python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD --hash-key 'MY_HASHING_KEY' --location '221B Baker St, London'
 ```
 
 **Note:** If you use a Google account and have two-factor authentication enabled, you need to [generate an app password](https://security.google.com/settings/security/apppasswords) and use that to log in.
+
+**Note:** You need [a hashing key](https://talk.pogodev.org/d/55-api-hashing-service-f-a-q).
 
 #### CLI arguments
 
@@ -31,6 +33,7 @@ python2 main.py -a AUTH_SERVICE -u USERNAME -p PASSWORD --location '221B Baker S
 | `-a`                 | Login service, `google` or `ptc`              | yes      |                                                 |
 | `-u`                 | Username                                      | yes      |                                                 |
 | `-p`                 | Password                                      | yes      |                                                 |
+| `--hash-key`         | [Hashing key](https://talk.pogodev.org/d/55-api-hashing-service-f-a-q) | yes      |                                                 |
 | `--location`         | Location (coords or address)                  | yes      |                                                 |
 | `--format`           | Custom nickname format, placeholders below    | optional | `--format "%percent% %name"` => `100% Vaporeon` |
 | `--rename`           | Rename the Pokémon (i.e. don’t just preview)  | optional |                                                 |
