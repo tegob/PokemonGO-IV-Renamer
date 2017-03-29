@@ -11,6 +11,7 @@ import time
 from itertools import groupby
 from pgoapi import PGoApi
 from pgoapi import utilities as util
+from pogocpm2level import cpm2level
 from random import uniform
 from terminaltables import SingleTable
 
@@ -152,17 +153,42 @@ class Renamer(object):
 					nickname = pokemon.get('nickname', 'NONE')
 					combat_power = pokemon.get('cp', 0)
 
+					cpm = pokemon['cp_multiplier'] + pokemon.get('additional_cp_multiplier', 0)
+					level = cpm2level(cpm)
+
+					# https://github.com/AeonLucid/POGOProtos/blob/master/src/POGOProtos/Enums/Gender.proto
+					GENDERS = {
+						0: '', # unset
+						1: u'♂', # male
+						2: u'♀', # female
+						3: '' # genderless
+					}
+					gender = GENDERS.get(
+						pokemon.get('pokemon_display', {}).get('gender', 0),
+						''
+					)
+					# https://github.com/AeonLucid/POGOProtos/blob/master/src/POGOProtos/Enums/Costume.proto
+					has_costume = pokemon.get('pokemon_display', {}).get('costume', 0) > 0
+
+					is_shiny = pokemon.get('pokemon_display', {}).get('shiny', 0) > 0
+
 					self.pokemon.append({
 						'id': pid,
 						'pokedex_number': pokedex_number,
 						'name': name,
 						'nickname': nickname,
+						'level': level,
 						'cp': combat_power,
 						'attack': attack,
 						'defense': defense,
 						'stamina': stamina,
 						'iv_percent': iv_percent,
 						'is_favorite': is_favorite,
+						'move_1': pokemon['move_1'],
+						'move_2': pokemon['move_2'],
+						'gender': gender,
+						'has_costume': has_costume,
+						'is_shiny': is_shiny,
 					})
 				except KeyError:
 					pass
@@ -174,7 +200,7 @@ class Renamer(object):
 		sorted_mons = sorted(self.pokemon, key=lambda k: (k['pokedex_number'], -k['iv_percent']))
 		groups = groupby(sorted_mons, key=lambda k: k['pokedex_number'])
 		table_data = [
-			[u'Pokémon', 'CP', 'IV %', 'ATK', 'DEF', 'STA', 'Candy', 'Recommendation']
+			[u'Pokémon', 'Level', 'CP', 'IV %', 'ATK', 'DEF', 'STA', 'Candy', 'Recommendation']
 		]
 		total_evolutions = 0
 		total_transfers = 0
@@ -201,6 +227,12 @@ class Renamer(object):
 					if pokemon['is_favorite']:
 						pokemon['message'] = u'keep (★)'
 						continue
+					if pokemon['has_costume']:
+						pokemon['message'] = u'keep (costume)'
+						continue
+					if pokemon['is_shiny']:
+						pokemon['message'] = u'keep (shiny)'
+						continue
 					if pokemon['iv_percent'] < self.config.iv:
 						pokemon['message'] = 'transfer'
 						pokemon['transfer'] = True
@@ -217,7 +249,8 @@ class Renamer(object):
 					else:
 						pokemon['message'] = 'keep %s' % iv_msg
 				row_data = [
-					pokemon_name + (u'★' if pokemon['is_favorite'] else ''),
+					pokemon_name + pokemon['gender'] + (u'✨' if pokemon['is_shiny'] else '') + (u'☃' if pokemon['has_costume'] else '') + (u'★' if pokemon['is_favorite'] else ''),
+					pokemon['level'],
 					pokemon['cp'],
 					'{0:.0f}%'.format(pokemon['iv_percent']),
 					pokemon['attack'],
@@ -230,7 +263,7 @@ class Renamer(object):
 		table = SingleTable(table_data)
 		table.justify_columns = {
 			0: 'left', 1: 'right', 2: 'right', 3: 'right',
-			4: 'right', 5: 'right', 6: 'right'
+			4: 'right', 5: 'right', 6: 'right', 7: 'right'
 		}
 		print table.table
 		table = SingleTable([
@@ -325,44 +358,25 @@ class Renamer(object):
 		print 'Cleared ' + str(cleared) + ' nicknames'
 
 	def transfer_pokemon(self):
-		pokemon_list = [p for p in self.pokemon if p.get('transfer', False)]
+		pokemon_list = [p for p in self.pokemon if p.get('transfer', False) and not p['is_favorite'] and not p['is_shiny'] and not p['has_costume']]
 		total_transfers = len(pokemon_list)
 		transfers_completed = 0
 		if not pokemon_list:
 			print u'No Pokémon scheduled to transfer.'
 			return
 		table_data = [
-			[u'Pokémon', 'CP', 'IV %', 'ATK', 'DEF', 'STA', 'Transfer status']
+			[u'Pokémon', 'CP', 'IV %', 'ATK', 'DEF', 'STA']
 		]
-		print 'About to transfer %d Pokémon…' % len(pokemon_list)
-		# After logging in, wait a while before starting to rename Pokémon, like a
-		# human player would.
-		self.wait_randomly()
+		print 'About to transfer %d Pokémon…' % total_transfers
+
+		transfer_list = []
 		for pokemon in pokemon_list:
+			# Remove the Pokémon from the list, so that we don’t try to rename
+			# it later.
+			self.pokemon.remove(pokemon)
+
 			pokedex_number = pokemon['pokedex_number']
 			pokemon_name = self.pokemon_list[str(pokedex_number)]
-			stats = 'CP {cp} IV {iv_percent}% {attack}-{defense}-{stamina}'.format(**pokemon)
-			print u'Transferring %s with stats: %s' % (pokemon_name, stats)
-
-			response = self.api.release_pokemon(pokemon_id=pokemon['id'])
-			transfers_completed += 1
-			transfer_description = 'Transfer %d of %d' % (transfers_completed, total_transfers)
-			try:
-				result = response['responses']['RELEASE_POKEMON']['result']
-			except KeyError:
-				print '%s failed.' % transfer_description
-				print response
-				status = 'error'
-				pass
-			else:
-				if result == 1:
-					status = 'success'
-					print '%s successful.' % transfer_description
-				else:
-					status = 'error'
-					print '%s failed. Error code: %s' % (transfer_description, str(result))
-
-			self.wait_randomly()
 
 			table_data.append([
 				pokemon_name,
@@ -370,16 +384,39 @@ class Renamer(object):
 				'{0:.0f}%'.format(pokemon['iv_percent']),
 				pokemon['attack'],
 				pokemon['defense'],
-				pokemon['stamina'],
-				status
+				pokemon['stamina']
 			])
+
+			transfer_list.append(pokemon['id'])
+
 		table = SingleTable(table_data)
 		table.justify_columns = {
 			0: 'left', 1: 'right', 2: 'right', 3: 'right',
 			4: 'right', 5: 'right', 6: 'left'
 		}
-		print u'The following Pokémon have been transferred:'
+		print u'The following Pokémon are about to be transferred:'
 		print table.table
+
+		# After logging in, wait a while before starting to rename Pokémon, like a
+		# human player would.
+		self.config.min_delay = total_transfers * 2
+		self.config.max_delay = total_transfers * 4
+		self.wait_randomly()
+		response = self.api.release_pokemon(pokemon_ids=transfer_list)
+		try:
+			result = response['responses']['RELEASE_POKEMON']['result']
+		except KeyError:
+			print 'Failed:'
+			print response
+			status = 'error'
+			pass
+		else:
+			if result == 1:
+				status = 'success'
+				print 'Transfer successful.'
+			else:
+				status = 'error'
+				print 'Transfer failed. Error code: %s' % str(result)
 
 if __name__ == '__main__':
 	Renamer().start()
